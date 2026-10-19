@@ -1,0 +1,180 @@
+{
+  "lane": "Refresh / Content Opportunity Scoring",
+  "release": "flyrank_pseudonymized_warehouse_release_v20260703",
+  "windows": {
+    "train": {
+      "features": "2026-03",
+      "label": "2026-04"
+    },
+    "test": {
+      "features": "2026-05",
+      "label": "2026-06"
+    }
+  },
+  "population": {
+    "gate_impressions": 500,
+    "train_items": 100893,
+    "train_clients": 43,
+    "train_base_rate": 0.5148,
+    "test_items": 111075,
+    "test_clients": 48,
+    "test_base_rate": 0.656,
+    "test_gated_items": 59874,
+    "test_gated_base_rate": 0.6647
+  },
+  "features": [
+    "log_imp",
+    "days_with_imp",
+    "momentum_f",
+    "has_h1",
+    "ctr",
+    "pos",
+    "pos_missing",
+    "age_days"
+  ],
+  "label": "label = 1 when next month's impressions < 0.8 x feature month's",
+  "selection": {
+    "design": "5 x 20% held-out, grouped by client vs random, on the training month",
+    "precision_at_50": {
+      "rule": 0.816,
+      "logit": 0.844,
+      "rf": 0.704,
+      "gbm": 0.836
+    },
+    "precision_at_50_random": {
+      "rule": 0.876,
+      "logit": 0.9,
+      "rf": 0.972,
+      "gbm": 0.984
+    },
+    "auc_grouped": {
+      "rule": 0.55,
+      "logit": 0.677,
+      "rf": 0.655,
+      "gbm": 0.656
+    }
+  },
+  "future_test": {
+    "design": "fit 2026-03, predict 2026-05, score against 2026-06 (single use)",
+    "precision_at_50_gated": {
+      "rule": 0.94,
+      "logit": 0.98,
+      "rf": 0.88,
+      "gbm": 0.9
+    },
+    "auc_gated": {
+      "rule": 0.615,
+      "logit": 0.705,
+      "rf": 0.696,
+      "gbm": 0.667
+    },
+    "precision_at_50_all": {
+      "rule": 0.94,
+      "logit": 0.9,
+      "rf": 0.86,
+      "gbm": 0.9
+    }
+  },
+  "playbook": {
+    "score": "P(decline) x log(1 + impressions)",
+    "rows_written": 50,
+    "clients": 14,
+    "top10_hits": 9,
+    "top50_hits": 49,
+    "top10": [
+      {
+        "rank": 1,
+        "page": "content_11bf4c",
+        "impressions": 88175,
+        "momentum": 0.016,
+        "position": 13.5,
+        "action": "check_indexing",
+        "june_pct": 21.6
+      },
+      {
+        "rank": 2,
+        "page": "content_f79972",
+        "impressions": 75264,
+        "momentum": 0.142,
+        "position": 9.2,
+        "action": "refresh_content",
+        "june_pct": -92.3
+      },
+      {
+        "rank": 3,
+        "page": "content_a14cf3",
+        "impressions": 40880,
+        "momentum": 0.039,
+        "position": 7.4,
+        "action": "check_indexing",
+        "june_pct": -72.5
+      },
+      {
+        "rank": 4,
+        "page": "content_58fa49",
+        "impressions": 75272,
+        "momentum": 0.171,
+        "position": 7.0,
+        "action": "refresh_content",
+        "june_pct": -73.1
+      },
+      {
+        "rank": 5,
+        "page": "content_7918f4",
+        "impressions": 73849,
+        "momentum": 0.304,
+        "position": 8.1,
+        "action": "refresh_content",
+        "june_pct": -25.8
+      },
+      {
+        "rank": 6,
+        "page": "content_72524c",
+        "impressions": 67712,
+        "momentum": 0.176,
+        "position": 7.7,
+        "action": "refresh_content",
+        "june_pct": -56.5
+      },
+      {
+        "rank": 7,
+        "page": "content_4ab17d",
+        "impressions": 29530,
+        "momentum": 0.014,
+        "position": 9.9,
+        "action": "check_indexing",
+        "june_pct": -83.0
+      },
+      {
+        "rank": 8,
+        "page": "content_3961d5",
+        "impressions": 45102,
+        "momentum": 0.195,
+        "position": 8.6,
+        "action": "refresh_content",
+        "june_pct": -88.9
+      },
+      {
+        "rank": 9,
+        "page": "content_762945",
+        "impressions": 53772,
+        "momentum": 0.129,
+        "position": 9.8,
+        "action": "refresh_content",
+        "june_pct": -96.6
+      },
+      {
+        "rank": 10,
+        "page": "content_60e0c9",
+        "impressions": 46086,
+        "momentum": 0.114,
+        "position": 3.7,
+        "action": "refresh_content",
+        "june_pct": -47.7
+      }
+    ]
+  },
+  "seed": 42,
+  "generated_utc": "2026-10-19T14:09:53Z",
+  "notebook": "work/notebooks/capstone.ipynb"
+}

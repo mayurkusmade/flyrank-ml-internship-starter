@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which pages should an editor refresh first? A leak-audited ranking on 79M rows of search data</title>
+<meta name="description" content="A refresh-prioritisation ranking built on the FlyRank ML Internship dataset, validated on a month it never saw, with a grouped split that shows how much of a model's apparent skill is client memorisation.">
+<style>
+  :root {
+    --ink: #1b1b1a; --muted: #5b5b57; --rule: #ddd8cd; --paper: #fbfaf6;
+    --accent: #2f5d8a; --warn: #a5452f; --ok: #2f6d4f; --card: #f3f0e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.65 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 56px 22px 80px; }
+  .kicker { font: 600 12px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+            text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.16; margin: 0 0 14px; letter-spacing: -.01em; }
+  .byline { color: var(--muted); font-size: 15px; margin-bottom: 30px; }
+  h2 { font-size: clamp(21px, 3vw, 26px); margin: 52px 0 14px; line-height: 1.25; }
+  h3 { font-size: 18px; margin: 30px 0 8px; }
+  p { margin: 0 0 16px; }
+  a { color: var(--accent); }
+  .lede { font-size: 19px; }
+  .abstract { background: var(--card); border-left: 4px solid var(--accent);
+               padding: 22px 24px; margin: 0 0 8px; border-radius: 3px; }
+  .abstract p { margin: 0; }
+  .figures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 34px 0 8px; }
+  .stat { border-top: 2px solid var(--ink); padding-top: 10px; }
+  .stat b { display: block; font-size: clamp(22px, 3.4vw, 30px); line-height: 1.1; }
+  .stat span { font: 12px/1.35 ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+  figure { margin: 30px 0 26px; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; background: #fff; }
+  figcaption { font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0 10px;
+           font: 13.5px/1.45 ui-sans-serif, system-ui, sans-serif; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .miss { color: var(--warn); font-weight: 600; }
+  .tag { font: 11px/1 ui-sans-serif, system-ui, sans-serif; background: var(--card);
+          border: 1px solid var(--rule); padding: 4px 6px; border-radius: 3px; white-space: nowrap; }
+  .note { border: 1px solid var(--rule); background: #fff; padding: 16px 18px; border-radius: 3px;
+           font-size: 15.5px; }
+  .note p:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 16px 20px; padding: 0; }
+  li { margin-bottom: 9px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px;
+          background: var(--card); padding: 1px 5px; border-radius: 3px; }
+  .foot { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--rule);
+           font-size: 14.5px; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  @media (max-width: 680px) {
+    .figures { grid-template-columns: repeat(2, 1fr); }
+    body { font-size: 16.5px; }
+    table { font-size: 12.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="kicker">FlyRank ML Internship · Capstone · Refresh / Content Opportunity Scoring</div>
+<h1>Which pages should an editor refresh first?</h1>
+<p class="byline">A leak-audited ranking built on 100,893 pages, validated on a month it never saw.
+Built on the FlyRank ML Internship dataset · October 2026</p>
+
+<div class="abstract">
+<p><strong>Abstract.</strong> A content editor with fifty review slots a week needs to know which pages to look
+at before next month, and a plausible rule — <em>big pages that are already slipping</em> — is cheap to
+write but has never been checked on a month it could not see. Using the FlyRank warehouse release, I built
+monthly features for every page (traffic, momentum, CTR, position, age), labelled a page “at risk” when its
+next month's impressions fell at least 20%, and trained a logistic model on March→April 2026. Validated with
+folds grouped by client and then tested once on May→June, the model reached **49 of the top 50** by
+precision at 50, against **47 of 50** for the hand-written baseline — a two-page difference with
+overlapping confidence intervals. The more useful finding is methodological: on a random split the flexible
+models looked far better (98% vs 84%), but grouping folds by client collapsed them, showing that most of
+their apparent skill was memorising clients rather than reading pages. The result is a decision-support
+queue with reason codes and three actions, not a claim that refreshing a page will recover its traffic.</p>
+</div>
+
+<div class="figures">
+  <div class="stat"><b>49/50</b><span>top-50 hits, future month (rule: 47/50)</span></div>
+  <div class="stat"><b>43</b><span>clients in the training month</span></div>
+  <div class="stat"><b>&minus;27 pts</b><span>forest P@50, random → grouped split</span></div>
+  <div class="stat"><b>59,874</b><span>pages in the scored population</span></div>
+</div>
+
+<h2>1. The decision</h2>
+<p>An editor at a content agency has roughly fifty slots a week and several clients. A slot costs a day of
+writing, editing and QA, so a bad pick costs twice: the refresh does not happen, and a page that needed one
+is not touched. Ranking is the whole job. The unit is one content item for one client over one calendar
+month; the output is an ordered queue; the human action is one of three: check the page's indexing, refresh
+its content, or wait a month.</p>
+<p>This is a ranking problem, so accuracy is the wrong metric. The metric is <strong>precision@K</strong> —
+of the top K pages a queue puts first, how many actually declined — and it is only readable beside the
+<strong>base rate</strong>: the share that would be right with no model at all.</p>
+
+<h2>2. Data</h2>
+<p>Everything comes from the gated FlyRank warehouse release
+(<code>flyrank_pseudonymized_warehouse_release_v20260703</code>), read with DuckDB straight from Hugging Face: daily search performance
+per page and a content dimension table. Two month-pairs are used, and nothing else.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Window</th><th>Features</th><th>Outcome</th><th class="num">Pages</th><th class="num">Clients</th><th class="num">Base rate</th></tr></thead>
+<tbody>
+<tr><td>Train</td><td>2026-03</td><td>2026-04</td><td class="num">100,893</td><td class="num">43</td><td class="num">0.515</td></tr>
+<tr><td>Future test (used once)</td><td>2026-05</td><td>2026-06</td><td class="num">111,075</td><td class="num">48</td><td class="num">0.656</td></tr>
+<tr><td>Scored population (≥ 500 impressions)</td><td>2026-05</td><td>2026-06</td><td class="num">59,874</td><td class="num">48</td><td class="num">0.665</td></tr>
+</tbody></table>
+</div>
+<p><strong>Excluded on purpose.</strong> The 90-day query table is out: its window runs 2026-04-02 to
+2026-06-30, which contains the outcome month — using it would be reading the answer. Every current-state
+field in the content table is out too (<code>content_updated_date</code>,
+<code>last_optimized_date</code>, publication flags, word count): they describe the snapshot as of July, so
+a page “updated” in May would leak that someone was already working on it. Page age is the exception,
+because a creation date cannot change after the fact. Pages below 100 monthly impressions are excluded as
+too thin to rank, and the published queue applies a 500-impression floor, because an editor's slot is worth
+the same for a noisy 80-impression page and a 50,000-impression one — and only one of them is a real story.</p>
+
+<h2>3. Method</h2>
+<h3>Features, all measured inside the feature month</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>Feature</th><th>Computed as</th><th>Knowable at the decision date because</th></tr></thead>
+<tbody>
+<tr><td><code>log_imp</code></td><td>log(1 + month impressions)</td><td>the month is closed</td></tr>
+<tr><td><code>days_with_imp</code></td><td>days with any impressions</td><td>already observed</td></tr>
+<tr><td><code>momentum_f</code></td><td>2nd half ÷ 1st half of the month, capped at 3</td><td>both halves are in the past</td></tr>
+<tr><td><code>has_h1</code></td><td>1 when the first half had zero impressions</td><td>a flag, so an undefined ratio is not read as zero</td></tr>
+<tr><td><code>ctr</code></td><td>clicks ÷ impressions × 100</td><td>same closed month</td></tr>
+<tr><td><code>pos</code></td><td>mean position, “no data” excluded</td><td>same closed month</td></tr>
+<tr><td><code>pos_missing</code></td><td>1 when position was never reported</td><td>a flag, so a fill cannot pass as a measurement</td></tr>
+<tr><td><code>age_days</code></td><td>decision date − creation date</td><td>immutable</td></tr>
+</tbody></table>
+</div>
+<p><strong>Label.</strong> A page is “at risk” when the next month's impressions fall at least 20% below the
+feature month's. That band is a choice, not a natural fact: a client whose whole inventory fell labels
+almost everything, and a healthy client labels almost nothing.</p>
+<p><strong>Baseline, frozen.</strong> A three-condition rule from an earlier week: at least 500 impressions,
+traffic present in the first half of the month, and momentum below 0.8; score = impressions × fraction of
+traffic lost in-month. It is re-computed here on the same rows and never re-tuned.</p>
+<p><strong>Two questions, two splits.</strong> <em>Will it work on a client it has never seen?</em>
+5 × 20% held out, grouped by client, on the training month — with a random split of the same rows beside
+it, so the gap is visible. <em>Will it work next month?</em> Fit on all of March, predict May, score against
+June. One shot. The June partition was never opened before this test.</p>
+<p><strong>Leakage checks run in the notebook, not asserted in prose:</strong> no outcome column in the
+feature list; every feature month strictly before its outcome month; the feature matrix rebuilt from a frame
+with all outcome columns deleted, and verified identical; no snapshot metadata in the features. The
+controlled test that the harness works was done earlier in the project — adding the label's own source
+drove ROC-AUC to exactly 1.0000 before the column was removed.</p>
+
+<h2>4. Results</h2>
+<h3>The split decides the winner</h3>
+<figure>
+  <img src="img/grouped-vs-random.png" alt="Bar chart comparing precision at 50 for the rule, logistic regression, random forest and gradient boosting under a client-grouped split and a random split.">
+  <figcaption>Same rows, same folds, one difference: whether the held-out rows come from seen clients. The
+  flexible models lose 15–27 points; the rule and the logistic model barely move.</figcaption>
+</figure>
+<div class="scroll">
+<table>
+<thead><tr><th>Model</th><th class="num">P@50, grouped</th><th class="num">P@50, random</th><th class="num">Gap</th><th class="num">AUC, grouped</th></tr></thead>
+<tbody>
+<tr><td>Rule (baseline)</td><td class="num">0.816</td><td class="num">0.876</td><td class="num">+0.060</td><td class="num">0.550</td></tr>
+<tr><td>Logistic regression</td><td class="num">0.844</td><td class="num">0.900</td><td class="num">+0.056</td><td class="num">0.677</td></tr>
+<tr><td>Random forest</td><td class="num">0.704</td><td class="num">0.972</td><td class="num">+0.268</td><td class="num">0.655</td></tr>
+<tr><td>Gradient boosting</td><td class="num">0.836</td><td class="num">0.984</td><td class="num">+0.148</td><td class="num">0.656</td></tr>
+</tbody></table>
+</div>
+<p>On a random split, gradient boosting looks excellent (0.984) and the forest nearly as good
+(0.972), while the rule manages 0.876. Group the folds by client and the order
+inverts: boosting falls to 0.836, the forest to 0.704, and logistic regression holds
+at 0.844 with the best grouped AUC (0.677). With 43 clients and one of them
+large, a random split lets a tree recognise a client and score its pages from its siblings. The model carried
+forward is therefore the boring one: eight coefficients, stable across both splits.</p>
+
+<h3>The month it never saw</h3>
+<figure>
+  <img src="img/model-vs-baseline.png" alt="Line chart of precision at K for the rule, the logistic model and the size-weighted model, from K equals 25 to K equals 1000, with the base rate marked.">
+  <figcaption>Precision by queue depth on May→June. At 25 slots the model is perfect; by 1,000 slots the
+  three rankings are within a few points of each other. The dashed line is the population's own decline
+  rate — what a random queue would average.</figcaption>
+</figure>
+<div class="scroll">
+<table>
+<thead><tr><th>Ranking</th><th class="num">P@50, ≥500 imp</th><th class="num">95% CI</th><th class="num">P@50, all pages</th><th class="num">AUC, ≥500 imp</th></tr></thead>
+<tbody>
+<tr><td>Rule (baseline)</td><td class="num">0.940</td><td class="num">0.86–1.00</td><td class="num">0.940</td><td class="num">0.615</td></tr>
+<tr><td>Logistic regression</td><td class="num">0.980</td><td class="num">0.94–1.00</td><td class="num">0.900</td><td class="num">0.705</td></tr>
+<tr><td>Random forest</td><td class="num">0.880</td><td class="num">0.78–0.96</td><td class="num">0.860</td><td class="num">0.696</td></tr>
+<tr><td>Gradient boosting</td><td class="num">0.900</td><td class="num">0.82–0.98</td><td class="num">0.900</td><td class="num">0.667</td></tr>
+</tbody></table>
+</div>
+<p>The logistic model leads at the editor's operating point: <strong>49 of the top 50</strong> declined,
+against <strong>47 of 50</strong> for the rule. The bootstrap intervals overlap, so the honest reading is
+“two pages better on this draw”, not “transformed”. The baseline is not humiliated — a rule with three
+conditions and no fitting reaches 94% six weeks after its thresholds were set — and that is the point of
+having it.</p>
+
+<h3>Who is actually in the queue</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>Ranking</th><th class="num">Clients in top 50</th><th class="num">Largest client share</th><th class="num">Median impressions</th><th class="num">P@50</th></tr></thead>
+<tbody>
+<tr><td>Rule</td><td class="num">11</td><td class="num">16/50</td><td class="num">55,348</td><td class="num">0.94</td></tr>
+<tr><td>Logistic, probability only</td><td class="num">20</td><td class="num">9/50</td><td class="num">674</td><td class="num">0.98</td></tr>
+<tr><td><strong>Logistic × log(impressions)</strong></td><td class="num">14</td><td class="num">14/50</td><td class="num">29,009</td><td class="num">0.98</td></tr>
+<tr><td>Logistic × √impressions</td><td class="num">10</td><td class="num">23/50</td><td class="num">118,895</td><td class="num">0.76</td></tr>
+</tbody></table>
+</div>
+<p>Both good rankings hit the same precision on <em>different pages</em>. The rule's queue is a handful of
+very large pages; the model's is broader and smaller. Weighting the model's probability by log impressions
+keeps its precision while multiplying the traffic at stake per slot by roughly forty — and weighting by raw
+impressions shows the failure mode: size takes over, and precision collapses to 0.70.</p>
+
+<figure>
+  <img src="img/signal-momentum.png" alt="Bar chart of June decline rate by May momentum band, showing a monotone decline from the weakest band to the strongest, with sample sizes annotated.">
+  <figcaption>The signal the rule leans on, measured out of time: pages whose May traffic fell in the second
+  half declined in June far more often than pages that grew. The relationship is real and it is graded, not
+  a cliff.</figcaption>
+</figure>
+<p><strong>What the model leans on</strong>, in standardised coefficients: momentum (&minus;0.595), the
+zero-first-half flag (&minus;0.424), CTR (&minus;0.370), log impressions (&minus;0.203), then age and
+position (&minus;0.083 each). Direction only — not causal effects. The weak age coefficient is the third
+independent sign that <em>staleness is not the driver</em> the refresh heuristic assumes; in the previous
+week's audit the field that would measure it turned out to exist only as a July snapshot, with 82% of pages
+carrying an update date after the decision.</p>
+
+<h2>5. Limitations</h2>
+<ul>
+  <li><strong>One training month, one test month.</strong> March only, 43 clients; scored on May only. A model
+  trained across more months would see seasonality this one cannot.</li>
+  <li><strong>The base rate moves.</strong> 0.515 in March, 0.656 in May→June, 0.665 in the scored population.
+  Every precision number here is a single draw from one month.</li>
+  <li><strong>The label is a chosen proxy.</strong> The ±20% band is a definition, not an observation.</li>
+  <li><strong>48 test clients against 43 training clients.</strong> The grouped split answers “unseen client”;
+  the future test answers “unseen month”. Neither answers both at once.</li>
+  <li><strong>K = 50 is small.</strong> Two pages move P@50 by 0.04, and the intervals overlap — which is why
+  the models are not ranked by a coin flip.</li>
+  <li><strong>Not causal.</strong> Nothing here shows that refreshing a page recovers traffic. The queue ranks
+  pages by an observed past→future pattern; the counterfactual is unmeasured.</li>
+  <li><strong>Survivorship.</strong> Pages with no next-month row are dropped (548 in training): “traffic fell
+  to zero” and “the page was removed” look identical, and the steepest declines live in that gap.</li>
+  <li><strong>One top failure mode is technical.</strong> The highest-scoring page in the previous week's
+  audit lost 99.9% of its traffic in four days — a URL, indexing or tracking break. That is why the playbook
+  has a <code>check_indexing</code> action, and it is a rule of thumb, not a validated classifier.</li>
+  <li><strong>No client-identifying data</strong> is used or shown; identifiers are pseudonyms, truncated
+  everywhere.</li>
+</ul>
+
+<h2>6. Ranked recommendations</h2>
+<p>The deployed score is <code>P(decline) × log(1 + impressions)</code> over pages with at least 500 monthly
+impressions: probability of a real decline, weighted by how much traffic is at stake. Actions come from the
+feature month alone.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Action</th><th>Condition</th><th>What the editor does</th></tr></thead>
+<tbody>
+<tr><td><code>check_indexing</code></td><td>momentum &lt; 0.10 — traffic stopped mid-month</td><td>verify canonical, redirects, robots/noindex and analytics before touching copy</td></tr>
+<tr><td><code>refresh_content</code></td><td>momentum &lt; 0.8 and ≥ 500 impressions</td><td>update the page, then measure against the baseline rate</td></tr>
+<tr><td><code>monitor</code></td><td>everything else the model still ranks</td><td>one more month of data; no slot yet</td></tr>
+</tbody></table>
+</div>
+<p>These are the first ten rows of the backtested queue — built from May, scored against June. The last
+column is what actually happened; it is shown for review and was never an input.</p>
+<div class="scroll">
+<table>
+<thead><tr><th class="num">#</th><th>Page (pseudonym)</th><th class="num">May imp.</th><th class="num">Momentum</th><th class="num">Position</th><th>Action</th><th class="num">June</th></tr></thead>
+<tbody>
+<tr><td class='num'>1</td><td class='mono'>content_11bf4c</td><td class='num'>88,175</td><td class='num'>0.02</td><td class='num'>13.5</td><td><span class='tag'>check indexing</span></td><td class='num miss'>+21.6%</td></tr>
+<tr><td class='num'>2</td><td class='mono'>content_f79972</td><td class='num'>75,264</td><td class='num'>0.14</td><td class='num'>9.2</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-92.3%</td></tr>
+<tr><td class='num'>3</td><td class='mono'>content_a14cf3</td><td class='num'>40,880</td><td class='num'>0.04</td><td class='num'>7.4</td><td><span class='tag'>check indexing</span></td><td class='num ok'>-72.5%</td></tr>
+<tr><td class='num'>4</td><td class='mono'>content_58fa49</td><td class='num'>75,272</td><td class='num'>0.17</td><td class='num'>7.0</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-73.1%</td></tr>
+<tr><td class='num'>5</td><td class='mono'>content_7918f4</td><td class='num'>73,849</td><td class='num'>0.30</td><td class='num'>8.1</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-25.8%</td></tr>
+<tr><td class='num'>6</td><td class='mono'>content_72524c</td><td class='num'>67,712</td><td class='num'>0.18</td><td class='num'>7.7</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-56.5%</td></tr>
+<tr><td class='num'>7</td><td class='mono'>content_4ab17d</td><td class='num'>29,530</td><td class='num'>0.01</td><td class='num'>9.9</td><td><span class='tag'>check indexing</span></td><td class='num ok'>-83.0%</td></tr>
+<tr><td class='num'>8</td><td class='mono'>content_3961d5</td><td class='num'>45,102</td><td class='num'>0.20</td><td class='num'>8.6</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-88.9%</td></tr>
+<tr><td class='num'>9</td><td class='mono'>content_762945</td><td class='num'>53,772</td><td class='num'>0.13</td><td class='num'>9.8</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-96.6%</td></tr>
+<tr><td class='num'>10</td><td class='mono'>content_60e0c9</td><td class='num'>46,086</td><td class='num'>0.11</td><td class='num'>3.7</td><td><span class='tag'>refresh content</span></td><td class='num ok'>-47.7%</td></tr>
+</tbody></table>
+</div>
+<p>Nine of ten declined and the queue as a whole hit 49 of 50. The one that did not — the top row, a
+check-indexing case whose traffic stopped in the second half of May — grew 22% in June: a trough that
+looked exactly like a break. That is the honest failure mode of a single month of momentum, and it is why
+the first action is a fifteen-minute check rather than a rewrite.</p>
+<p><strong>How to use it tomorrow.</strong> Work down the queue, but read the action first: a
+<code>check_indexing</code> row is a technical check; a <code>refresh_content</code> row is the writing slot;
+<code>monitor</code> means the score is high but no pattern is clear, so a month of data is cheaper than a
+guess. After four weeks, compare refreshed pages against the <code>visible_slip</code> baseline rate. That
+comparison is what would eventually turn this ranking into evidence about refreshes — and it is not
+something this dataset can do on its own.</p>
+
+<h2>7. Reproducibility</h2>
+<p>Everything is in one public repository: the executed notebook, the metrics receipt and the paper source.</p>
+<ul>
+  <li><a href="https://github.com/mayurkusmade/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb">Capstone notebook (executed, outputs included)</a></li>
+  <li><a href="https://github.com/mayurkusmade/flyrank-ml-internship-starter/blob/main/work/outputs/capstone_metrics.json">Metrics receipt</a> — every number on this page</li>
+  <li><a href="https://github.com/mayurkusmade/flyrank-ml-internship-starter">Repository</a> — earlier notebooks: data contract, signal audit, baseline</li>
+</ul>
+<p>Seeds: <code>SEED = 42</code> for every split, forest and bootstrap; logistic regression is
+deterministic under lbfgs. Run the notebook top to bottom after <code>pip install -r requirements.txt</code>;
+it needs a Hugging Face read token in <code>.env</code> or a Colab secret, scans four month partitions on
+the first run (~2–4 minutes) and caches the frames afterwards. The June partition was unread until this
+test and was used once as the outcome month; there is no second holdout, which is why the limitations
+section is longer than the results.</p>
+
+<h2>8. Acknowledgments and data credit</h2>
+<p>Built on the <strong>FlyRank ML Internship</strong> dataset — <a href="https://flyrank.ai">flyrank.ai</a>.
+The release is a pseudonymized, gated warehouse snapshot; no client names, domains, raw URLs, or raw queries
+appear in this paper or in the notebook behind it. Thanks to FlyRank for publishing real search-performance
+data in a form that can be analysed without exposing anyone's business.</p>
+
+<p class="foot">Decision-support research on anonymized historical data. Observed patterns, measured
+comparisons and a validated ranking — not causal claims about Google's algorithm and not evidence that
+refreshing a page recovers its traffic.</p>
+
+</div>
+</body>
+</html>

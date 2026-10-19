@@ -67,15 +67,22 @@ jobs:
               pass
           final = url.startswith("https://")
           bad = []
+          def is_placeholder(cell):
+              # A freshly-cloned skeleton cell is only the stock instruction comment.
+              # Those notebooks are unfilled, not unrun, so they are skipped below.
+              text = "".join(cell.get("source", []))
+              return ("This cell is for CODE" in text) or text.strip().startswith("#") and "\n" not in text.strip()
+
           for p in sorted(glob.glob("work/notebooks/*.ipynb")):
               try:
                   nb = json.load(open(p))
               except Exception:
                   continue
               code = [c for c in nb.get("cells", []) if c.get("cell_type") == "code"]
-              src = sum(len("".join(c.get("source", []))) for c in code)
-              has_out = any(c.get("outputs") for c in code)
-              if code and src > 200 and not has_out:
+              filled = [c for c in code if not is_placeholder(c)]
+              src = sum(len("".join(c.get("source", []))) for c in filled)
+              has_out = any(c.get("outputs") for c in filled)
+              if filled and src > 200 and not has_out:
                   kind = "error" if final else "warning"
                   print(f"::{kind} file={p}::{p} has filled code cells but no outputs - "
                         "did Colab save an unrun copy? Runtime -> Run all, then save again.")
