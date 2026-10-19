@@ -1,0 +1,45 @@
+{
+  "lane": "content refresh prioritization (ranking / scoring) - Refresh / Content Opportunity Scoring",
+  "release": "flyrank_pseudonymized_warehouse_release_v20260703",
+  "feature_month": "2026-03",
+  "label_month": "2026-04",
+  "decision_date": "2026-03-31",
+  "sealed_month": "2026-06",
+  "rule": {
+    "gate_impressions": 500,
+    "gate_momentum_below": 0.8,
+    "score": "imp_mar * (1 - momentum_mar)",
+    "reason_code": "slipping_but_visible",
+    "action": "refresh_content"
+  },
+  "frame": {
+    "items": 100893,
+    "clients": 43,
+    "base_rate": 0.5148
+  },
+  "queue": {
+    "rows": 14304,
+    "share_of_frame": 0.1418,
+    "clients": 29,
+    "pool_decline_rate": 0.7596,
+    "top50_clients": 6,
+    "top50_max_from_one_client": 36
+  },
+  "precision_at_k": {
+    "50": 0.88,
+    "100": 0.9,
+    "500": 0.85,
+    "1000": 0.844
+  },
+  "comparators": {
+    "impressions_only_p50": 0.84,
+    "momentum_only_p50": 0.72
+  },
+  "signal_verdicts": {
+    "momentum": "CONFIRMED",
+    "volume": "MIXED",
+    "staleness": "FALSE (not observable as-of)"
+  },
+  "generated_utc": "2026-10-19T13:22:15Z",
+  "notebook": "work/notebooks/w04_baseline_score.ipynb"
+}
