@@ -1,0 +1,49 @@
+name: pages
+
+# Publishes the capstone research paper (paper/index.html + paper/img) to GitHub Pages.
+# The paper is static: no build step, just the folder that already contains index.html.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "paper/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the paper is self-contained
+        run: |
+          set -e
+          test -f paper/index.html
+          grep -qi 'flyrank\.ai' paper/index.html
+          test -f paper/img/signal-momentum.png
+          test -f paper/img/model-vs-baseline.png
+          test -f paper/img/grouped-vs-random.png
+          if grep -Eq '(src|href)="/[^/]' paper/index.html; then
+            echo "::error::absolute asset path found - Pages serves the site from a subpath"; exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: paper
+      - id: deployment
+        uses: actions/deploy-pages@v4
